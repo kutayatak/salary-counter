@@ -256,7 +256,7 @@
       if (savedLanguage) isEnglish = savedLanguage === 'en';
       
       updateSpeedLabel();
-      toggleLanguage();
+      updateLanguage();
     }
 
     function saveDataToLocalStorage() {
@@ -278,6 +278,19 @@
       document.getElementById('speedValue').innerText = val;
       updateInterval = parseInt(val);
       saveDataToLocalStorage();
+    }
+
+    function updateLanguage() {
+      const languageTexts = isEnglish ? texts.en : texts.tr;
+
+      document.getElementById('title').innerText = languageTexts.title;
+      document.getElementById('label-salary').innerText = languageTexts.salary;
+      document.getElementById('label-payday').innerText = languageTexts.payday;
+      document.getElementById('label-speed').innerText = languageTexts.update;
+      document.getElementById('calculate-button').innerText = languageTexts.calculate;
+      document.getElementById('reset-button').innerText = languageTexts.reset;
+      document.getElementById('result').innerText = '';
+      document.getElementById('daily-earned').innerText = '';
     }
 
     function startCounter() {
@@ -336,22 +349,22 @@
         document.getElementById('daily-earned').innerText = `${isEnglish ? texts.en.today : texts.tr.today} ₺${earnedToday.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
         const dayProgress = (secondsToday / 86400) * 100;
-        document.getElementById('progress').style.width = `${dayProgress}%`;
+        document.getElementById('progress').style.width = dayProgress + "%";
+
+        if (isRunning) {
+          interval = setTimeout(updateDisplay, updateInterval);
+        }
       }
 
       updateDisplay();
-      interval = setInterval(updateDisplay, updateInterval);
     }
 
     function resetCounter() {
       clearInterval(interval);
-      interval = null;
       isRunning = false;
       earned = 0;
-      document.getElementById('result').innerHTML = `<p>${isEnglish ? texts.en.resetInfo : texts.tr.resetInfo}</p>`;
-      document.getElementById('daily-earned').innerText = "";
-      document.getElementById('progress').style.width = "0%";
-      saveDataToLocalStorage();
+      document.getElementById('result').innerHTML = '';
+      document.getElementById('daily-earned').innerText = '';
     }
 
     function toggleTheme() {
@@ -359,11 +372,13 @@
       saveDataToLocalStorage();
     }
 
-    function restartCounterIfRunning() {
-      if (isRunning) startCounter();
+    function toggleLanguage() {
+      isEnglish = !isEnglish;
+      updateLanguage();
+      saveDataToLocalStorage();
     }
 
-    loadDataFromLocalStorage();
+    window.onload = loadDataFromLocalStorage;
   </script>
 </body>
 </html>
