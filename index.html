@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Canlı Kazanç Hesaplayıcı</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f5f5f5;
+      --text-color: #333;
+      --card-bg: #fff;
+      --highlight-color: #4CAF50;
+      --bar-bg: #ddd;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f1f1f1;
+      --card-bg: #1e1e1e;
+      --bar-bg: #444;
+    }
+
+    body {
+      background: var(--bg-color);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+      transition: all 0.3s ease;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .container {
+      background: var(--card-bg);
+      padding: 25px 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    input, select {
+      padding: 10px;
+      width: 100%;
+      margin-top: 5px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: var(--highlight-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-theme {
+      background: #333;
+      color: white;
+    }
+
+    body.dark .toggle-theme {
+      background: #ccc;
+      color: #222;
+    }
+
+    .result {
+      margin-top: 25px;
+    }
+
+    .per-second {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--highlight-color);
+      margin-bottom: 15px;
+    }
+
+    .notes {
+      font-size: 14px;
+      color: #888;
+    }
+
+    body.dark .notes {
+      color: #bbb;
+    }
+
+    .daily-earned {
+      margin-top: 10px;
+      font-size: 15px;
+      color: var(--highlight-color);
+    }
+
+    .progress-bar {
+      height: 10px;
+      width: 100%;
+      background: var(--bar-bg);
+      border-radius: 10px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      background: var(--highlight-color);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    /* Apple tarzı slider */
+    input[type="range"] {
+      width: 100%;
+      height: 10px;
+      background: #ddd;
+      border-radius: 10px;
+      appearance: none;
+      outline: none;
+      transition: all 0.3s ease;
+      margin-top: 15px; /* üst boşluğu ayarlayarak ortalama */
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 10px;
+      border-radius: 10px;
+      background: #ddd;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: var(--highlight-color);
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-top: -5px; /* Bu ayar ile butonu tam ortaya yerleştiriyoruz */
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 10px;
+      border-radius: 10px;
+      background: #ddd;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: var(--highlight-color);
+      cursor: pointer;
+      margin-top: -5px; /* Aynı şekilde burada da ortalama */
+    }
+  </style>
+</head>
+<body>
+  <h1>Canlı Kazanç Hesaplayıcı</h1>
+  <div class="container">
+    <label for="salary">Aylık Net Maaşınız (₺):</label>
+    <input type="number" id="salary" placeholder="Örn: 20000">
+
+    <label for="payday">Maaş Günü (1-31):</label>
+    <input type="number" id="payday" placeholder="Örn: 1" min="1" max="31">
+
+    <label for="speedSlider">Güncelleme Sıklığı (ms): <span id="speedValue">200</span> ms</label>
+    <input type="range" id="speedSlider" min="1" max="1000" value="200" step="1" oninput="updateSpeedLabel(); restartCounterIfRunning()">
+
+    <button onclick="startCounter()">Hesapla</button>
+    <button class="toggle-theme" onclick="toggleTheme()">🌙 Gece Modu</button>
+
+    <div class="result" id="result"></div>
+    <div class="daily-earned" id="daily-earned"></div>
+    <div class="progress-bar"><div class="progress" id="progress"></div></div>
+  </div>
+
+  <script>
+    let interval;
+    let updateInterval = 200;
+    let perSecond = 0;
+    let earned = 0;
+    let perDay = 0;
+    let isRunning = false;
+
+    // Sayfa açıldığında kayıtlı veriler varsa doldur
+    window.onload = () => {
+      const savedSalary = localStorage.getItem('salary');
+      const savedPayday = localStorage.getItem('payday');
+      const savedSpeed = localStorage.getItem('speed');
+
+      if (savedSalary) document.getElementById('salary').value = savedSalary;
+      if (savedPayday) document.getElementById('payday').value = savedPayday;
+      if (savedSpeed) {
+        document.getElementById('speedSlider').value = savedSpeed;
+        document.getElementById('speedValue').innerText = savedSpeed;
+        updateInterval = parseInt(savedSpeed);
+      }
+    };
+
+    // Güncelleme hızı etiketini güncelle
+    function updateSpeedLabel() {
+      const val = document.getElementById('speedSlider').value;
+      document.getElementById('speedValue').innerText = val;
+      updateInterval = parseInt(val);
+      localStorage.setItem('speed', updateInterval);
+    }
+
+    function startCounter() {
+      clearInterval(interval);
+      isRunning = true;
+
+      const salary = parseFloat(document.getElementById('salary').value);
+      const payday = parseInt(document.getElementById('payday').value);
+      updateInterval = parseInt(document.getElementById('speedSlider').value);
+
+      localStorage.setItem('salary', salary);
+      localStorage.setItem('payday', payday);
+      localStorage.setItem('speed', updateInterval);
+
+      const result = document.getElementById('result');
+
+      if (isNaN(salary) || isNaN(payday) || payday < 1 || payday > 31) {
+        result.innerHTML = "<p>Lütfen geçerli bir maaş ve maaş günü girin.</p>";
+        return;
+      }
+
+      const now = new Date();
+      let currentPayDate = new Date(now.getFullYear(), now.getMonth(), payday);
+      let nextPayDate = new Date(now.getFullYear(), now.getMonth() + 1, payday);
+
+      if (now < currentPayDate) {
+        nextPayDate = currentPayDate;
+        currentPayDate = new Date(now.getFullYear(), now.getMonth() - 1, payday);
+      }
+
+      const totalSeconds = (nextPayDate - currentPayDate) / 1000;
+      perSecond = salary / totalSeconds;
+      perDay = perSecond * 86400;
+      const perHour = perSecond * 3600;
+
+      earned = (now - currentPayDate) / 1000 * perSecond;
+
+      function updateDisplay() {
+        earned += perSecond * (updateInterval / 1000);
+
+        const now = new Date();
+        const secondsToday = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+        const earnedToday = secondsToday * perSecond;
+
+        document.getElementById('result').innerHTML = `
+          <div class="per-second">₺${earned.toFixed(4)}</div>
+          <div class="notes">
+            <p>Günlük: ₺${perDay.toFixed(2)}</p>
+            <p>Saatlik: ₺${perHour.toFixed(2)}</p>
+            <p>Saniyelik: ₺${perSecond.toFixed(4)}</p>
+          </div>
+        `;
+
+        document.getElementById('daily-earned').innerText = `📈 Bugün kazandığınız: ₺${earnedToday.toFixed(2)}`;
+
+        const dayProgress = (secondsToday / 86400) * 100;
+        document.getElementById('progress').style.width = `${dayProgress}%`;
+      }
+
+      updateDisplay();
+      interval = setInterval(updateDisplay, updateInterval);
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+    }
+
+    function restartCounterIfRunning() {
+      if (isRunning) startCounter();
+    }
+  </script>
+</body>
+</html>
