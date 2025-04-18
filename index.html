@@ -36,6 +36,14 @@
       font-weight: 600;
     }
 
+    .top-right-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
     .container {
       background: var(--card-bg);
       padding: 25px 30px;
@@ -86,6 +94,11 @@
       color: #222;
     }
 
+    .toggle-lang {
+      background: #2196f3;
+      color: white;
+    }
+
     .result {
       margin-top: 25px;
     }
@@ -128,7 +141,6 @@
       transition: width 0.5s ease;
     }
 
-    /* Apple tarzı slider */
     input[type="range"] {
       width: 100%;
       height: 10px;
@@ -137,7 +149,7 @@
       appearance: none;
       outline: none;
       transition: all 0.3s ease;
-      margin-top: 15px; /* üst boşluğu ayarlayarak ortalama */
+      margin-top: 15px;
     }
 
     input[type="range"]::-webkit-slider-runnable-track {
@@ -153,8 +165,7 @@
       border-radius: 50%;
       background: var(--highlight-color);
       cursor: pointer;
-      transition: background-color 0.3s ease;
-      margin-top: -5px; /* Bu ayar ile butonu tam ortaya yerleştiriyoruz */
+      margin-top: -5px;
     }
 
     input[type="range"]::-moz-range-track {
@@ -169,24 +180,28 @@
       border-radius: 50%;
       background: var(--highlight-color);
       cursor: pointer;
-      margin-top: -5px; /* Aynı şekilde burada da ortalama */
+      margin-top: -5px;
     }
   </style>
 </head>
 <body>
-  <h1>Canlı Kazanç Hesaplayıcı</h1>
+  <div class="top-right-controls">
+    <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
+    <button class="toggle-lang" onclick="toggleLanguage()">🌐</button>
+  </div>
+  <h1 id="title">Canlı Kazanç Hesaplayıcı</h1>
   <div class="container">
-    <label for="salary">Aylık Net Maaşınız (₺):</label>
+    <label for="salary" id="label-salary">Aylık Net Maaşınız (₺):</label>
     <input type="number" id="salary" placeholder="Örn: 20000">
 
-    <label for="payday">Maaş Günü (1-31):</label>
+    <label for="payday" id="label-payday">Maaş Günü (1-31):</label>
     <input type="number" id="payday" placeholder="Örn: 1" min="1" max="31">
 
-    <label for="speedSlider">Güncelleme Sıklığı (ms): <span id="speedValue">200</span> ms</label>
+    <label for="speedSlider" id="label-speed">Güncelleme Sıklığı (ms): <span id="speedValue">200</span> ms</label>
     <input type="range" id="speedSlider" min="1" max="1000" value="200" step="1" oninput="updateSpeedLabel(); restartCounterIfRunning()">
 
-    <button onclick="startCounter()">Hesapla</button>
-    <button class="toggle-theme" onclick="toggleTheme()">🌙 Gece Modu</button>
+    <button id="calculate-button" onclick="startCounter()">Hesapla</button>
+    <button id="reset-button" onclick="resetCounter()">Sıfırla</button>
 
     <div class="result" id="result"></div>
     <div class="daily-earned" id="daily-earned"></div>
@@ -200,23 +215,44 @@
     let earned = 0;
     let perDay = 0;
     let isRunning = false;
+    let isEnglish = false;
 
-    // Sayfa açıldığında kayıtlı veriler varsa doldur
-    window.onload = () => {
-      const savedSalary = localStorage.getItem('salary');
-      const savedPayday = localStorage.getItem('payday');
-      const savedSpeed = localStorage.getItem('speed');
-
-      if (savedSalary) document.getElementById('salary').value = savedSalary;
-      if (savedPayday) document.getElementById('payday').value = savedPayday;
-      if (savedSpeed) {
-        document.getElementById('speedSlider').value = savedSpeed;
-        document.getElementById('speedValue').innerText = savedSpeed;
-        updateInterval = parseInt(savedSpeed);
+    const texts = {
+      tr: {
+        title: "Canlı Kazanç Hesaplayıcı",
+        salary: "Aylık Net Maaşınız (₺):",
+        payday: "Maaş Günü (1-31):",
+        update: "Güncelleme Sıklığı (ms):",
+        calculate: "Hesapla",
+        reset: "Sıfırla",
+        today: "📈 Bugün kazandığınız:",
+        invalid: "Lütfen geçerli bir maaş ve maaş günü girin.",
+        resetInfo: "Hesaplama sıfırlandı."
+      },
+      en: {
+        title: "Live Income Calculator",
+        salary: "Your Net Monthly Salary (₺):",
+        payday: "Payday (1-31):",
+        update: "Update Interval (ms):",
+        calculate: "Calculate",
+        reset: "Reset",
+        today: "📈 Earned today:",
+        invalid: "Please enter a valid salary and payday.",
+        resetInfo: "Calculation reset."
       }
     };
 
-    // Güncelleme hızı etiketini güncelle
+    function toggleLanguage() {
+      isEnglish = !isEnglish;
+      const lang = isEnglish ? 'en' : 'tr';
+      document.getElementById("title").innerText = texts[lang].title;
+      document.getElementById("label-salary").innerText = texts[lang].salary;
+      document.getElementById("label-payday").innerText = texts[lang].payday;
+      document.getElementById("label-speed").childNodes[0].nodeValue = texts[lang].update + " ";
+      document.getElementById("calculate-button").innerText = texts[lang].calculate;
+      document.getElementById("reset-button").innerText = texts[lang].reset;
+    }
+
     function updateSpeedLabel() {
       const val = document.getElementById('speedSlider').value;
       document.getElementById('speedValue').innerText = val;
@@ -239,7 +275,7 @@
       const result = document.getElementById('result');
 
       if (isNaN(salary) || isNaN(payday) || payday < 1 || payday > 31) {
-        result.innerHTML = "<p>Lütfen geçerli bir maaş ve maaş günü girin.</p>";
+        result.innerHTML = `<p>${isEnglish ? texts.en.invalid : texts.tr.invalid}</p>`;
         return;
       }
 
@@ -256,6 +292,8 @@
       perSecond = salary / totalSeconds;
       perDay = perSecond * 86400;
       const perHour = perSecond * 3600;
+      const perWeek = perDay * 7;
+      const perYear = perDay * 365;
 
       earned = (now - currentPayDate) / 1000 * perSecond;
 
@@ -269,13 +307,15 @@
         document.getElementById('result').innerHTML = `
           <div class="per-second">₺${earned.toFixed(4)}</div>
           <div class="notes">
-            <p>Günlük: ₺${perDay.toFixed(2)}</p>
-            <p>Saatlik: ₺${perHour.toFixed(2)}</p>
-            <p>Saniyelik: ₺${perSecond.toFixed(4)}</p>
+            <p>${isEnglish ? "Daily" : "Günlük"}: ₺${perDay.toFixed(2)}</p>
+            <p>${isEnglish ? "Weekly" : "Haftalık"}: ₺${perWeek.toFixed(2)}</p>
+            <p>${isEnglish ? "Yearly" : "Yıllık"}: ₺${perYear.toFixed(2)}</p>
+            <p>${isEnglish ? "Hourly" : "Saatlik"}: ₺${perHour.toFixed(2)}</p>
+            <p>${isEnglish ? "Per second" : "Saniyelik"}: ₺${perSecond.toFixed(4)}</p>
           </div>
         `;
 
-        document.getElementById('daily-earned').innerText = `📈 Bugün kazandığınız: ₺${earnedToday.toFixed(2)}`;
+        document.getElementById('daily-earned').innerText = `${isEnglish ? texts.en.today : texts.tr.today} ₺${earnedToday.toFixed(2)}`;
 
         const dayProgress = (secondsToday / 86400) * 100;
         document.getElementById('progress').style.width = `${dayProgress}%`;
@@ -283,6 +323,16 @@
 
       updateDisplay();
       interval = setInterval(updateDisplay, updateInterval);
+    }
+
+    function resetCounter() {
+      clearInterval(interval);
+      interval = null;
+      isRunning = false;
+      earned = 0;
+      document.getElementById('result').innerHTML = `<p>${isEnglish ? texts.en.resetInfo : texts.tr.resetInfo}</p>`;
+      document.getElementById('daily-earned').innerText = "";
+      document.getElementById('progress').style.width = "0%";
     }
 
     function toggleTheme() {
